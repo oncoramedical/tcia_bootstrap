@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "*orthanc.json": "jsonc",
+  },
+  "python.formatting.provider": "black",
+}
