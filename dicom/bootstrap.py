@@ -19,17 +19,12 @@ requests.packages.urllib3.disable_warnings(SubjectAltNameWarning)
 logging.getLogger().setLevel(logging.INFO)
 
 TCIA_URL = "https://services.cancerimagingarchive.net/services/v3/TCIA/query"
-DICOM_URL = "https://dicom:8042"
-
-
-def api_url(endpoint):
-    """Generate TCIA REST API URL."""
-    return "/".join([TCIA_URL, endpoint])
+DICOM_URL = "http://dicom:8042"
 
 
 def get_collections():
     """Get available TCIA collections."""
-    url = api_url("getCollectionValues")
+    url = os.path.join(TCIA_URL, "getCollectionValues")
     r = requests.get(url)
     collections = [d["Collection"] for d in json.loads(r.content)]
     collections.sort()
@@ -59,7 +54,7 @@ def main():
 
     # Get collection name
     collection = options.collection or os.getenv("COLLECTION")
-    if not collection or options.list:
+    if not (collection or options.collection):
         collections = get_collections()
         raise ValueError(
             "Collection must be specified in environment variables or via command-line arguments."
@@ -68,7 +63,7 @@ def main():
 
     # Get all series ids in TCIA collection
     logging.info(f"Getting series ids for collection {collection}...")
-    url = api_url("getSeries")
+    url = os.path.join(TCIA_URL, "getSeries")
     series = requests.post(
         url, data={"format": "json", "Collection": collection}
     ).json()
@@ -85,7 +80,7 @@ def main():
 
         # Get zip of instances
         uid = s["SeriesInstanceUID"]
-        url = api_url("getImage")
+        url = os.path.join(TCIA_URL, "getImage")
         r = requests.post(url, data={"SeriesInstanceUID": uid}, stream=True)
         r.raw.decode_content = True
 
@@ -93,7 +88,7 @@ def main():
         logging.info(f"Storing instances from series {uid} in DICOM server...")
         z = zipfile.ZipFile(BytesIO(r.content))
         for name in tqdm(z.namelist()):
-            url = api_url("instances")
+            url = os.path.join(DICOM_URL, "instances")
             r = requests.post(
                 url,
                 data=z.read(name),
